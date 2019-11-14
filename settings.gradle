@@ -1,5 +1,6 @@
 rootProject.name = 'tasks'
 
+include 'drProducerLatency'
 
 rootProject.children.each {project ->
     String projectName = project.name.replaceAll("\\p{Upper}") { "-${it.toLowerCase()}" }
