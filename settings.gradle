@@ -1,0 +1,8 @@
+rootProject.name = 'tasks'
+
+
+rootProject.children.each {project ->
+    String projectName = project.name.replaceAll("\\p{Upper}") { "-${it.toLowerCase()}" }
+    project.projectDir = new File("tasks", projectName)
+    assert project.projectDir.isDirectory()
+}

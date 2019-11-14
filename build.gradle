@@ -1,0 +1,80 @@
+ext {
+    // lambda to generate the artifact name from a project instance
+    artifactName = { project -> "$rootProject.name-${project.name.replaceAll("\\p{Upper}") { "-${it.toLowerCase()}" }}" }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'eclipse'
+    apply plugin: 'idea'
+
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        if (project.hasProperty('voltdbJar')) {
+            implementation project.parent.files(voltdbJar)
+        } else {
+            print('In order to run the unit tests a jar built from voltdb master needs to be provided. -PvoltdbJar=<path>')
+            implementation 'org.voltdb:voltdb:9.2.1'
+        }
+        testImplementation 'org.junit.jupiter:junit-jupiter-api:5.5.2'
+        testImplementation 'org.mockito:mockito-junit-jupiter:3.1.0'
+        testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.5.2'
+    }
+
+    java {
+        withJavadocJar()
+        withSourcesJar()
+    }
+
+    test {
+        useJUnitPlatform()
+    }
+
+    archivesBaseName = artifactName(project)
+
+    eclipse {
+        project {
+            name = archivesBaseName
+        }
+    }
+
+    jar.manifest {
+        attributes('Implementation-Title': archivesBaseName, 'Implementation-Version': version)
+    }
+}
+
+// Create "all" jars for classes, sources and javadoc
+task jar(type: Jar, dependsOn: subprojects.tasks['classes']) {
+    archiveVersion = project.version
+    archiveBaseName = "$project.name-all"
+    destinationDirectory = file("$project.buildDir/libs")
+
+    from subprojects.sourceSets.main.output
+}
+
+task sourceJar(type: Jar) {
+    archiveVersion = project.version
+    archiveBaseName = "$project.name-all"
+    archiveClassifier = 'sources'
+    destinationDirectory = file("$project.buildDir/libs")
+
+    from subprojects.sourceSets.main.java
+}
+
+task javadocJar(type: Jar, dependsOn: subprojects.tasks['javadoc']) {
+    archiveVersion = project.version
+    archiveBaseName = "$project.name-all"
+    archiveClassifier = 'javadoc'
+    destinationDirectory = file("$project.buildDir/libs")
+
+    from subprojects.tasks['javadoc']
+}
+
+task clean(type: Delete) {
+    delete project.buildDir
+}
+
+task build(dependsOn: [jar, sourceJar, javadocJar])
