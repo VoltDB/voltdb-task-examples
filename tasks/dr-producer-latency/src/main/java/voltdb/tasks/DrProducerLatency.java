@@ -39,7 +39,7 @@ import org.voltdb.task.Action;
 import org.voltdb.task.ActionGenerator;
 import org.voltdb.task.ActionResult;
 import org.voltdb.task.TaskHelper;
-import org.voltdb.task.TaskValidationErrors;
+import org.voltdb.utils.CompoundErrors;
 
 /**
  * Task for polling the DRPRODUCER statistics and reporting when latency is higher than a given threshold.
@@ -107,7 +107,7 @@ public class DrProducerLatency implements ActionGenerator {
 
     public static String validateParameters(TaskHelper helper, long warningTimestampDelta, long warningBacklog,
             long errorTimestampDelta, long errorBacklog, long rateLimitMs) {
-        TaskValidationErrors errors = new TaskValidationErrors();
+        CompoundErrors errors = new CompoundErrors();
         if (warningTimestampDelta < 0) {
             errors.addErrorMessage(MSG_WARNING_TSD_POSITIVE);
         }
@@ -153,7 +153,7 @@ public class DrProducerLatency implements ActionGenerator {
 
     @Override
     public Action getFirstAction() {
-        return Action.createProcedure(this::handleStatisticsResult, "@Statistics", "DRPRODUCER", 0);
+        return Action.procedureCall(this::handleStatisticsResult, "@Statistics", "DRPRODUCER", 0);
     }
 
     @Override
@@ -198,7 +198,7 @@ public class DrProducerLatency implements ActionGenerator {
             }
         }
 
-        return Action.createProcedure(this::handleStatisticsResult, "@Statistics", "DRPRODUCER", 0);
+        return Action.procedureCall(this::handleStatisticsResult, "@Statistics", "DRPRODUCER", 0);
     }
 
     /**

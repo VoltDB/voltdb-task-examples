@@ -16,8 +16,8 @@ subprojects {
         if (project.hasProperty('voltdbJar')) {
             implementation project.parent.files(voltdbJar)
         } else {
-            print('In order to run the unit tests a jar built from voltdb master needs to be provided. -PvoltdbJar=<path>')
-            implementation 'org.voltdb:voltdb:9.2.1'
+            print('In order to build against a local voltdb jar set the property: -PvoltdbJar=<path>')
+            implementation 'org.voltdb:voltdb:9.3.0'
         }
         testImplementation 'org.junit.jupiter:junit-jupiter-api:5.5.2'
         testImplementation 'org.mockito:mockito-junit-jupiter:3.1.0'
