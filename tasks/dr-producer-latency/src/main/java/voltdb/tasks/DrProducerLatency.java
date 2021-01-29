@@ -53,7 +53,7 @@ import org.voltdb.utils.CompoundErrors;
  * </pre>
  * <p>
  * Parameters which need to be provided when the task is defined
- * <table>
+ * <table summary="Task Parameters">
  * <tr>
  * <th>Parameter</th>
  * <th>Description</th>
@@ -64,6 +64,7 @@ import org.voltdb.utils.CompoundErrors;
  * backlog is also exceeded. If 0 threshold is disabled. The delta is calculated by subtracting LASTACKTIMESTAMP from
  * LASTQUEUEDTIMESTAMP</td>
  * </tr>
+ * <tr>
  * <td>Warning backlog</td>
  * <td>The backlog threshold for number of outstanding transactions to replicate. If the threshold is exceeded and the
  * warning time stamp delta is exceeded a warning message will be logged. If 0 threshold is disabled. The backlog is
@@ -75,6 +76,7 @@ import org.voltdb.utils.CompoundErrors;
  * is also exceeded. If 0 threshold is disabled. The delta is calculated by subtracting LASTACKTIMESTAMP from
  * LASTQUEUEDTIMESTAMP</td>
  * </tr>
+ * <tr>
  * <td>Error backlog</td>
  * <td>The backlog threshold for number of outstanding transactions to replicate. If the threshold is exceeded and the
  * error time stamp delta is exceeded an error message will be logged. If 0 threshold is disabled. The backlog is
