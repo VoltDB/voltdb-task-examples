@@ -19,9 +19,9 @@ subprojects {
             print('In order to build against a local voltdb jar set the property: -PvoltdbJar=<path>')
             implementation 'org.voltdb:voltdb:9.3.2'
         }
-        testImplementation 'org.junit.jupiter:junit-jupiter-api:5.5.2'
-        testImplementation 'org.mockito:mockito-junit-jupiter:3.1.0'
-        testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.5.2'
+        testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+        testImplementation 'org.mockito:mockito-junit-jupiter:3.7.7'
+        testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
     }
 
     java {
