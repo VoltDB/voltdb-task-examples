@@ -97,9 +97,7 @@ public class GrowingCommandlog implements ActionGenerator {
 
     public void initialize(TaskHelper helper, int maxSegmentCount) {
         this.helper = helper;
-        if (maxSegmentCount <= 0) {
-            this.maxSegmentCount = Integer.MAX_VALUE;
-        }
+        this.maxSegmentCount = maxSegmentCount <= 0? Integer.MAX_VALUE : maxSegmentCount;
     }
 
     @Override

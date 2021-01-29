@@ -24,17 +24,14 @@
 package voltdb.tasks;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static voltdb.tasks.GrowingCommandlog.MSG_ERROR_BAD_SEGMENT_CNT;
-
-import java.sql.Timestamp;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -74,8 +71,8 @@ public class GrowingCommandlogTest {
      */
     @Test
     public void basicLogging() {
-        StatsRow[] rows = { new StatsRow(0), new StatsRow(1, 0) };
-        Action action = initializeTask(100, 200, 1_000, rows);
+        StatsRow[] rows = { new StatsRow("A", 1), new StatsRow("B", 1), new StatsRow("C", 1) };
+        Action action = initializeTask(10, rows);
 
         verify(helper, never()).logWarning(any());
         verify(helper, never()).logError(any());
@@ -84,282 +81,54 @@ public class GrowingCommandlogTest {
         action.getCallback().apply(result);
 
         verify(helper, never()).logWarning(any());
-        verify(helper, never()).logError(any());
 
         // rows with some latency
-        rows[0].latency(50);
-        rows[1].latency(25);
+        rows[0].inUse(1);
+        rows[1].inUse(2);
+        rows[2].inUse(10);
         action.getCallback().apply(result);
 
         verify(helper, never()).logWarning(any());
-        verify(helper, never()).logError(any());
 
         // Add one row with warning latency
-        rows[1].latency(120);
+        rows[1].inUse(12);
         action.getCallback().apply(result);
 
         verify(helper, times(1)).logWarning(any());
-        verify(helper, never()).logError(any());
 
         // Same result should not log a second time
         action.getCallback().apply(result);
 
         verify(helper, times(1)).logWarning(any());
-        verify(helper, never()).logError(any());
 
         // Same row but now as an error
-        rows[1].latency(220);
+        rows[2].inUse(22);
         action.getCallback().apply(result);
 
         verify(helper, times(1)).logWarning(any());
-        verify(helper, times(1)).logError(any());
-
-        // Same result should not log a second time
-        action.getCallback().apply(result);
-
-        verify(helper, times(1)).logWarning(any());
-        verify(helper, times(1)).logError(any());
-
-        // Down grading latency to warning should not log
-        rows[1].latency(120);
-        action.getCallback().apply(result);
-
-        verify(helper, times(1)).logWarning(any());
-        verify(helper, times(1)).logError(any());
-
-        // Other cluster going over threshold should warn
-        rows[0].latency(120);
-        rows[1].latency(0);
-        action.getCallback().apply(result);
-
-        verify(helper, times(2)).logWarning(any());
-        verify(helper, times(1)).logError(any());
-    }
-
-    /*
-     * Test that warnings are never logged when warning threshold is disabled
-     */
-    @Test
-    public void disableWarning() {
-        StatsRow[] rows = { new StatsRow(0), new StatsRow(1) };
-        Action action = initializeTask(0, 200, 1_000, rows);
-
-        // rows with no latency
-        action.getCallback().apply(result);
-
-        verify(helper, never()).logWarning(any());
-        verify(helper, never()).logError(any());
-
-        // rows with some latency
-        rows[0].latency(50);
-        rows[1].latency(150);
-        action.getCallback().apply(result);
-
-        verify(helper, never()).logWarning(any());
-        verify(helper, never()).logError(any());
-
-        // Add row with error latency
-        rows[1].latency(250);
-        action.getCallback().apply(result);
-
-        verify(helper, never()).logWarning(any());
-        verify(helper, times(1)).logError(any());
-    }
-
-    /*
-     * Test that errors are never logged when error threshold is disabled
-     */
-    @Test
-    public void disableErrors() {
-        StatsRow[] rows = { new StatsRow(0), new StatsRow(1) };
-        Action action = initializeTask(100, 0, 1_000, rows);
-
-        // rows with no latency
-        action.getCallback().apply(result);
-
-        verify(helper, never()).logWarning(any());
-        verify(helper, never()).logError(any());
-
-        // rows with warning latency
-        rows[0].latency(50);
-        rows[1].latency(150);
-        action.getCallback().apply(result);
-
-        verify(helper, times(1)).logWarning(any());
-        verify(helper, never()).logError(any());
-
-        // row with more latency
-        rows[1].latency(250);
-        action.getCallback().apply(result);
-
-        verify(helper, times(1)).logWarning(any());
-        verify(helper, never()).logError(any());
-
-        // row with max latency
-        rows[1].lastAckedTimestamp = new Timestamp(0);
-        rows[1].lastQueuedTimestamp = new Timestamp(Long.MAX_VALUE);
-        action.getCallback().apply(result);
-
-        verify(helper, times(1)).logWarning(any());
-        verify(helper, never()).logError(any());
-    }
-
-    /*
-     * Test that rows that are not in normal mode or synced are ignored
-     */
-    @Test
-    public void notRunningDrIsNotLogged() {
-        StatsRow[] rows = { new StatsRow(0, 0).latency(2000).paused(), new StatsRow(1, 0).latency(2000).notSynced(),
-                new StatsRow(2, 0).latency(120), new StatsRow(3, 0).latency(220) };
-        Action action = initializeTask(100, 200, 1_000, rows);
-
-        action.getCallback().apply(result);
-
-        verify(helper, times(1)).logWarning(any());
-        verify(helper, times(1)).logError(any());
-    }
-
-    /*
-     * Test that all stats are ignored if result is not succes
-     */
-    @Test
-    public void errorResponse() {
-        Action action = initializeTask(100, 200, 1_000, null);
-
-        when(response.getStatus()).thenReturn(ClientResponse.UNEXPECTED_FAILURE);
-        action.getCallback().apply(result);
-
-        verify(response, never()).getResults();
-        verify(helper, never()).logWarning(any());
-        verify(helper, never()).logError(any());
-    }
-
-    /*
-     * Test that rate limit only applies to a cluster
-     */
-    @Test
-    public void rateLimitMultiCluster() {
-        StatsRow[] rows = { new StatsRow(0, 0), new StatsRow(0, 1), new StatsRow(1, 0), new StatsRow(1, 1) };
-
-        Action action = initializeTask(100, 200, 1_000, rows);
-
-        // rows with no latency
-        action.getCallback().apply(result);
-        verify(helper, never()).logWarning(any());
-        verify(helper, never()).logError(any());
-
-        // cluster 0 with error latency
-        rows[0].latency(220);
-        rows[1].latency(220);
-        action.getCallback().apply(result);
-        verify(helper, never()).logWarning(any());
-        verify(helper, times(1)).logError(any());
-
-        // cluster 1 with warning latency
-        rows[2].latency(120);
-        rows[3].latency(120);
-        action.getCallback().apply(result);
-        verify(helper, times(1)).logWarning(any());
-        verify(helper, times(1)).logError(any());
-    }
-
-    /*
-     * Test no rate limit logs every time
-     */
-    @Test
-    public void rateLimitDisabled() {
-        StatsRow[] rows = { new StatsRow(0, 0).latency(120), new StatsRow(1, 0).latency(220) };
-        Action action = initializeTask(100, 200, 0, rows);
-
-        for (int i = 0; i < 10; ++i) {
-            action.getCallback().apply(result);
-            verify(helper, times(i + 1)).logWarning(any());
-            verify(helper, times(i + 1)).logError(any());
-        }
-    }
-
-    /*
-     * Test that message will be logged once past ratelimit point
-     */
-    @Test
-    public void logAfterRateLimit() throws InterruptedException {
-        StatsRow[] rows = { new StatsRow(0).latency(120), new StatsRow(1).latency(220), new StatsRow(1, 0).latency(150),
-                new StatsRow(1, 1) };
-        Action action = initializeTask(100, 200, 20, rows);
-
-        action.getCallback().apply(result);
-        verify(helper, times(1)).logWarning(any());
-        verify(helper, times(1)).logError(any());
-
-        Thread.sleep(20);
-
-        action.getCallback().apply(result);
-        verify(helper, times(2)).logWarning(any());
-        verify(helper, times(2)).logError(any());
-    }
-
-    /*
-     * Test that over threshold messages are not logged when only one threshold is surpassed
-     */
-    @Test
-    public void onlyLogWhenOverBothThresholds() {
-        StatsRow[] rows = { new StatsRow(0).timestampDelta(150) };
-
-        Action action = initializeTask(100, 200, 20, rows);
-
-        // Only timestamp delta over warning
-        action.getCallback().apply(result);
-        verify(helper, never()).logWarning(any());
-        verify(helper, never()).logError(any());
-
-        // Only timestamp delta over error
-        rows[0].timestampDelta(250);
-        action.getCallback().apply(result);
-        verify(helper, never()).logWarning(any());
-        verify(helper, never()).logError(any());
-
-        // Only backlog over warning
-        rows[0].timestampDelta(0).backlog(150);
-        action.getCallback().apply(result);
-        verify(helper, never()).logWarning(any());
-        verify(helper, never()).logError(any());
-
-        // Only backlog over error
-        rows[0].backlog(250);
-        action.getCallback().apply(result);
-        verify(helper, never()).logWarning(any());
-        verify(helper, never()).logError(any());
     }
 
     /*
      * Test that warning message is logged when one threshold is over error and the other is over warning
      */
     @Test
-    public void statsAtDifferentThresholds() {
-        StatsRow[] rows = { new StatsRow(0).timestampDelta(150).backlog(250) };
+    public void correctErrorString() {
+        StatsRow[] rows = { new StatsRow("A", 1), new StatsRow("B", 1), new StatsRow("C", 1) };
 
-        Action action = initializeTask(100, 200, 0, rows);
+        Action action = initializeTask(10, rows);
 
         // delta over warning and backlog over error
         action.getCallback().apply(result);
-        verify(helper, times(1)).logWarning(any());
-        verify(helper, never()).logError(any());
+        verify(helper, never()).logWarning(any());
 
         // delta over error and backlog over warning
-        rows[0].timestampDelta(250).backlog(150);
+        rows[0].inUse(15);
+        rows[2].inUse(11);
         action.getCallback().apply(result);
-        verify(helper, times(2)).logWarning(any());
-        verify(helper, never()).logError(any());
+        verify(helper, times(1)).logWarning(contains("A, C"));
     }
 
-    private Action initializeTask(long warningTimestampDelta, long errorTimestampDelta, long rateLimit,
-            StatsRow[] rows) {
-        return initializeTask(warningTimestampDelta, warningTimestampDelta, errorTimestampDelta, errorTimestampDelta,
-                rateLimit, rows);
-    }
-
-    private Action initializeTask(long warningTimestampDelta, long warningBacklog, long errorTimestampDelta,
-            long errorBacklog, long rateLimit, StatsRow[] rows) {
+    private Action initializeTask(int maxSegmentsInUse, StatsRow[] rows) {
         when(response.getStatus()).thenReturn(ClientResponse.SUCCESS);
         when(result.getResponse()).thenReturn(response);
 
@@ -367,25 +136,15 @@ public class GrowingCommandlogTest {
             when(response.getResults()).then(c -> createTable(rows));
         }
 
-        DrProducerLatency task = new DrProducerLatency();
-        task.initialize(helper, warningTimestampDelta, warningBacklog, errorTimestampDelta, errorBacklog, rateLimit);
+        GrowingCommandlog task = new GrowingCommandlog();
+        task.initialize(helper, maxSegmentsInUse);
         return task.getFirstAction();
     }
 
-    private static void assertErrorMessageContains(String errorMessage, String... expected) {
-        assertNotNull(errorMessage);
-        for (String e : expected) {
-            assertTrue(errorMessage.contains(e), () -> String.format("'%s' does not contain '%s'", errorMessage, e));
-        }
-    }
-
     private static VoltTable[] createTable(StatsRow... rows) {
-        VoltTable table = new VoltTable(new ColumnInfo("REMOTE_CLUSTER_ID", VoltType.INTEGER),
-                new ColumnInfo("PARTITION_ID", VoltType.INTEGER),
-                new ColumnInfo("LASTQUEUEDDRID", VoltType.BIGINT), new ColumnInfo("LASTACKDRID", VoltType.BIGINT),
-                new ColumnInfo("LASTQUEUEDTIMESTAMP", VoltType.TIMESTAMP),
-                new ColumnInfo("LASTACKTIMESTAMP", VoltType.TIMESTAMP), new ColumnInfo("ISSYNCED", VoltType.STRING),
-                new ColumnInfo("MODE", VoltType.STRING));
+        VoltTable table = new VoltTable(
+                new ColumnInfo("HOSTNAME", VoltType.STRING),
+                new ColumnInfo("IN_USE_SEGMENT​_COUNT", VoltType.INTEGER));
 
         for (StatsRow row : rows) {
             table.addRow(row.toRow());
@@ -395,51 +154,21 @@ public class GrowingCommandlogTest {
     }
 
     static class StatsRow {
-        final int remoteClusterId;
-        final int partitionId;
-        long lastQueuedDrid = 0;
-        final long lastAckDrid = 0;
-        Timestamp lastQueuedTimestamp = new Timestamp(System.currentTimeMillis());
-        Timestamp lastAckedTimestamp = lastQueuedTimestamp;
-        private boolean isSynced = true;
-        private String mode = "NORMAL";
+        final String hostname;
+        int inuseSegments;
 
-        StatsRow(int partitionId) {
-            this(0, partitionId);
+        StatsRow(String hostname, int inuseSegments) {
+            this.hostname = hostname;
+            this.inuseSegments = inuseSegments;
         }
 
-        StatsRow(int remoteClusterId, int partitionId) {
-            this.remoteClusterId = remoteClusterId;
-            this.partitionId = partitionId;
-        }
-
-        StatsRow latency(long latency) {
-            return timestampDelta(latency).backlog(latency);
-        }
-
-        StatsRow timestampDelta(long delta) {
-            lastAckedTimestamp = new Timestamp(lastQueuedTimestamp.getTime() - delta);
-            return this;
-        }
-
-        StatsRow backlog(long backlog) {
-            lastQueuedDrid = backlog;
-            return this;
-        }
-
-        StatsRow notSynced() {
-            isSynced = false;
-            return this;
-        }
-
-        StatsRow paused() {
-            mode = "PAUSED";
+        StatsRow inUse(int inuseSegments) {
+            this.inuseSegments = inuseSegments;
             return this;
         }
 
         Object[] toRow() {
-            return new Object[] { remoteClusterId, partitionId, lastQueuedDrid, lastAckDrid, lastQueuedTimestamp,
-                    lastAckedTimestamp, Boolean.toString(isSynced), mode };
+            return new Object[] { hostname, inuseSegments };
         }
     }
 }
