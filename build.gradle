@@ -17,7 +17,7 @@ subprojects {
             implementation project.parent.files(voltdbJar)
         } else {
             print('In order to build against a local voltdb jar set the property: -PvoltdbJar=<path>')
-            implementation 'org.voltdb:voltdb:9.3.0'
+            implementation 'org.voltdb:voltdb:9.3.2'
         }
         testImplementation 'org.junit.jupiter:junit-jupiter-api:5.5.2'
         testImplementation 'org.mockito:mockito-junit-jupiter:3.1.0'
