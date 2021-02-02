@@ -58,7 +58,7 @@ import org.voltdb.utils.CompoundErrors;
  * Example task creation:<br>
  *
  * <pre>
- * CREATE TASK growing-commandlog ON SCHEDULE EVERY 5 MINUTES
+ * CREATE TASK commandlogMon ON SCHEDULE EVERY 5 MINUTES
  *     PROCEDURE FROM CLASS voltdb.tasks.GrowingCommandlog WITH (20)
  *     ON ERROR LOG;
  * </pre>
@@ -97,7 +97,7 @@ public class GrowingCommandlog implements ActionGenerator {
 
     public void initialize(TaskHelper helper, int maxSegmentCount) {
         this.helper = helper;
-        this.maxSegmentCount = maxSegmentCount <= 0? Integer.MAX_VALUE : maxSegmentCount;
+        this.maxSegmentCount = maxSegmentCount <= 0 ? Integer.MAX_VALUE : maxSegmentCount;
     }
 
     @Override
@@ -130,7 +130,7 @@ public class GrowingCommandlog implements ActionGenerator {
             VoltTable stats = response.getResults()[0];
 
             while (stats.advanceRow()) {
-                int currSegmentCnt = (int)stats.getLong("IN_USE_SEGMENT​_COUNT");
+                int currSegmentCnt = (int)stats.getLong("IN_USE_SEGMENT_COUNT");
                 if (currSegmentCnt > maxSegmentCount) {
                     if (msg == null) {
                         msg = new ProblemMsg();
@@ -176,8 +176,14 @@ public class GrowingCommandlog implements ActionGenerator {
         }
 
         String buildWarningString() {
-            return "Hosts " + String.join(", ", hostNames) + " have consumed between " +
-                    minSegments + " and " + maxSegments + " CommandLog segments";
+            if (minSegments == maxSegments) {
+                return "Hosts " + String.join(", ", hostNames) + " have consumed " +
+                        maxSegments + " CommandLog segments";
+            }
+            else {
+                return "Hosts " + String.join(", ", hostNames) + " have consumed between " +
+                        minSegments + " and " + maxSegments + " CommandLog segments.";
+            }
         }
     }
 }
