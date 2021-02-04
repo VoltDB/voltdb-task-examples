@@ -81,8 +81,10 @@ public class GrowingCommandlog implements ActionGenerator {
     // Messages visible for test validation
     final static String MSG_ERROR_BAD_SEGMENT_CNT = "Error max in-use segment count <= 0.";
 
-    private TaskHelper helper;
-    private int maxSegmentCount;
+    private TaskHelper m_helper;
+    private int m_maxSegmentCount;
+    private int m_statsCallFailureCount = 0;
+    private static final int MAX_BACK_TO_BACK_STATS_FAILURES = 4; // This could be parameterized
 
     public static String validateParameters(TaskHelper helper, int maxSegmentCount) {
         CompoundErrors errors = new CompoundErrors();
@@ -96,8 +98,8 @@ public class GrowingCommandlog implements ActionGenerator {
     }
 
     public void initialize(TaskHelper helper, int maxSegmentCount) {
-        this.helper = helper;
-        this.maxSegmentCount = maxSegmentCount <= 0 ? Integer.MAX_VALUE : maxSegmentCount;
+        this.m_helper = helper;
+        this.m_maxSegmentCount = maxSegmentCount <= 0 ? Integer.MAX_VALUE : maxSegmentCount;
     }
 
     @Override
@@ -127,11 +129,12 @@ public class GrowingCommandlog implements ActionGenerator {
         ProblemMsg msg = null;
 
         if (response.getStatus() == ClientResponse.SUCCESS) {
+            m_statsCallFailureCount = 0;
             VoltTable stats = response.getResults()[0];
 
             while (stats.advanceRow()) {
                 int currSegmentCnt = (int)stats.getLong("IN_USE_SEGMENT_COUNT");
-                if (currSegmentCnt > maxSegmentCount) {
+                if (currSegmentCnt > m_maxSegmentCount) {
                     if (msg == null) {
                         msg = new ProblemMsg();
                     }
@@ -140,12 +143,20 @@ public class GrowingCommandlog implements ActionGenerator {
                 }
             }
             if (msg != null) {
-                helper.logWarning(msg.buildWarningString() + " The expected maximum is " + maxSegmentCount +
+                m_helper.logWarning(msg.buildWarningString() + " The expected maximum is " + m_maxSegmentCount +
                         " segments. This is an indication that Truncation Snapshots are no longer completing" +
                         " either because there is a problem in the snapshot subsystem or because other types" +
                         " of snapshots are in progress. Large CommandLogs will slow down a cluster recovery. If" +
                         " truncation snapshots are no longer completing, it is recommended that the cluster be" +
                         " shutdown and recovered as soon as possible.");
+            }
+        }
+        else {
+            m_statsCallFailureCount++;
+            if (m_statsCallFailureCount >= MAX_BACK_TO_BACK_STATS_FAILURES) {
+                m_statsCallFailureCount = 0;
+                m_helper.logError("The CommandLog Monitor Task (" + m_helper.getTaskName() + ") is not" +
+                        " operational because the statistics subsystem is not reporting COMMANDLOG status.");
             }
         }
 

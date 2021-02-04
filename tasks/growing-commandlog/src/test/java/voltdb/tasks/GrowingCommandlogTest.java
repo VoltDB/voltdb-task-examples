@@ -65,7 +65,7 @@ public class GrowingCommandlogTest {
         assertNull(GrowingCommandlog.validateParameters(null, 2));
 
         // Test single invalid parameter
-        assertEquals(GrowingCommandlog.validateParameters(null, 0), MSG_ERROR_BAD_SEGMENT_CNT);
+        assertEquals(MSG_ERROR_BAD_SEGMENT_CNT, GrowingCommandlog.validateParameters(null, 0));
     }
 
     /*
