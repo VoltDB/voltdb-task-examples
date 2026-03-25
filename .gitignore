@@ -7,5 +7,11 @@ bin/
 # Gradle build directory
 build/
 
+# Maven build directory
+target/
+
+# IntelliJ IDEA
+*.iml
+
 # Do not ignore .gitignore
 !.gitignore

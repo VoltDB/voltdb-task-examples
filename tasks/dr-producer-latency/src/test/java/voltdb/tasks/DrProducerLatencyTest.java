@@ -76,13 +76,13 @@ public class DrProducerLatencyTest {
         assertNull(DrProducerLatency.validateParameters(null, 500, 500, 1000, 1000, 0));
 
         // Test single invalid parameter
-        assertEquals(DrProducerLatency.validateParameters(null, -1, 0, 0, 0, 0), MSG_WARNING_TSD_POSITIVE);
-        assertEquals(DrProducerLatency.validateParameters(null, 0, -1, 0, 0, 0), MSG_WARNING_BACKLOG_POSITIVE);
-        assertEquals(DrProducerLatency.validateParameters(null, 0, 0, -1, 0, 0), MSG_ERROR_TSD_POSITIVE);
-        assertEquals(DrProducerLatency.validateParameters(null, 0, 0, 0, -1, 0), MSG_ERROR_BACKLOG_POSITIVE);
-        assertEquals(DrProducerLatency.validateParameters(null, 200, 0, 100, 0, 0), MSG_WARNING_TSD_GT_ERROR);
-        assertEquals(DrProducerLatency.validateParameters(null, 0, 200, 0, 100, 0), MSG_WARNING_BACKLOG_GT_ERROR);
-        assertEquals(DrProducerLatency.validateParameters(null, 0, 0, 0, 0, -1), MSG_RATE_LIMIT_POSITIVE);
+        assertEquals(MSG_WARNING_TSD_POSITIVE, DrProducerLatency.validateParameters(null, -1, 0, 0, 0, 0));
+        assertEquals(MSG_WARNING_BACKLOG_POSITIVE, DrProducerLatency.validateParameters(null, 0, -1, 0, 0, 0));
+        assertEquals(MSG_ERROR_TSD_POSITIVE, DrProducerLatency.validateParameters(null, 0, 0, -1, 0, 0));
+        assertEquals(MSG_ERROR_BACKLOG_POSITIVE, DrProducerLatency.validateParameters(null, 0, 0, 0, -1, 0));
+        assertEquals(MSG_WARNING_TSD_GT_ERROR, DrProducerLatency.validateParameters(null, 200, 0, 100, 0, 0));
+        assertEquals(MSG_WARNING_BACKLOG_GT_ERROR, DrProducerLatency.validateParameters(null, 0, 200, 0, 100, 0));
+        assertEquals(MSG_RATE_LIMIT_POSITIVE, DrProducerLatency.validateParameters(null, 0, 0, 0, 0, -1));
 
         // Test multiple invalid parameters
         assertErrorMessageContains(DrProducerLatency.validateParameters(null, -1, 0, -1, 0, 0),
